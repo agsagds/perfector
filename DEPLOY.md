@@ -24,7 +24,7 @@ Optional: create Modal secret `huggingface` with `HF_TOKEN` if model download re
 modal secret create huggingface HF_TOKEN=hf_...
 ```
 
-Then add `secrets=[modal.Secret.from_name("huggingface")]` to `@app.cls` in `modal/inference.py`.
+Then add `secrets=[modal.Secret.from_name("huggingface")]` to `@app.cls` in `modal_app/inference.py`.
 
 Optional: protect the endpoint with a shared secret — export `AUDIT_TOKEN=<random string>` before running `./scripts/deploy_modal.sh`. When set, every request must carry a matching `X-Audit-Token` header (the Space sends it automatically when its `MODAL_AUDIT_TOKEN` secret is set to the same value).
 

@@ -33,7 +33,7 @@ Model: `google/gemma-4-E4B-it` — **4.5B effective**, Tiny Titan eligible, ≤3
 | [space/merge.py](space/merge.py) | Merge + score recomputation |
 | [space/prompts.py](space/prompts.py) | LLM system prompt (LLM codes only) |
 | [space/render.py](space/render.py) | Report HTML for Gradio |
-| [modal/inference.py](modal/inference.py) | Modal Gemma 4 deployment |
+| [modal_app/inference.py](modal_app/inference.py) | Modal Gemma 4 deployment |
 | [post-audit-skill.md](post-audit-skill.md) | Original spec (reference) |
 
 ## Local development
@@ -85,4 +85,4 @@ Copy the deployed web URL. Create a Modal secret `huggingface` with `HF_TOKEN` i
 
 ## License
 
-Apache 2.0
+Apache 2.0 — see [LICENSE](LICENSE).
