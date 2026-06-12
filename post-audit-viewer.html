@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Аудит поста — просмотр отчёта</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f5f1e8; --card:#fffdf8; --ink:#211f1b; --soft:#5c574d; --faint:#928c7e;
+    --rule:#e2dccd; --rule-2:#d3ccb8;
+    --crit:#b3261e; --crit-bg:#fbe9e6; --warn:#956000; --warn-bg:#faf0d6; --info:#2b5f8a; --info-bg:#e6eef6;
+    --ok:#2f6b34; --ok-bg:#e8f1e3;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:"Golos Text",sans-serif; font-size:16px; line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(circle at 18% -10%,#fbf8f0 0,transparent 46%);
+  }
+  .wrap{max-width:900px;margin:0 auto;padding:38px 26px 90px}
+  a{color:var(--info)}
+  .mono{font-family:"JetBrains Mono",monospace}
+
+  /* masthead */
+  header.top{border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:26px}
+  header.top .kicker{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint)}
+  header.top h1{font-family:"Lora",serif;font-weight:700;font-size:34px;line-height:1.04;margin:6px 0 0;letter-spacing:-.01em}
+  header.top p{margin:7px 0 0;color:var(--soft);font-size:14.5px;max-width:60ch}
+
+  /* input */
+  .io{background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:16px;margin-bottom:30px}
+  .io summary{cursor:pointer;font-weight:600;font-size:14px;list-style:none;display:flex;align-items:center;gap:8px}
+  .io summary::-webkit-details-marker{display:none}
+  .io summary .chev{transition:transform .2s;color:var(--faint)}
+  details[open] .io-body{margin-top:14px}
+  textarea{width:100%;min-height:150px;resize:vertical;border:1px solid var(--rule-2);border-radius:9px;
+    padding:12px 13px;font-family:"JetBrains Mono",monospace;font-size:12.5px;line-height:1.55;background:#fcfaf4;color:var(--ink)}
+  textarea:focus{outline:none;border-color:var(--ink)}
+  .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  button{font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;border-radius:8px;padding:8px 14px;border:1px solid var(--rule-2);background:#fcfaf4;color:var(--ink);transition:.15s}
+  button:hover{border-color:var(--ink)}
+  button.primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+  button.primary:hover{opacity:.88}
+  .err{color:var(--crit);font-size:13px;margin-top:10px;font-family:"JetBrains Mono",monospace;display:none}
+
+  /* sections */
+  .sec{margin-top:34px}
+  .sec-h{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);
+    border-bottom:1px solid var(--rule);padding-bottom:8px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:baseline}
+
+  /* score head */
+  .head{display:flex;gap:26px;align-items:center;flex-wrap:wrap}
+  .gauge{flex:0 0 auto;position:relative;width:138px;height:138px}
+  .gauge .num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .gauge .num b{font-family:"Lora",serif;font-size:42px;font-weight:700;line-height:1}
+  .gauge .num span{font-size:11px;color:var(--faint);font-family:"JetBrains Mono",monospace;margin-top:2px}
+  .head .lead{flex:1 1 280px;min-width:260px}
+  .head .lead .verdict{font-family:"Lora",serif;font-size:21px;line-height:1.32;font-weight:500;margin:0 0 12px}
+  .capped{display:flex;flex-wrap:wrap;gap:6px}
+  .capped .lbl{font-size:11px;color:var(--faint);font-family:"JetBrains Mono",monospace;align-self:center;margin-right:2px}
+  .tag{font-family:"JetBrains Mono",monospace;font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid;letter-spacing:.02em}
+  .tag.crit{color:var(--crit);background:var(--crit-bg);border-color:#eecfca}
+
+  /* dimensions */
+  .dim{display:grid;grid-template-columns:150px 1fr;gap:14px 18px;align-items:start;padding:14px 0;border-bottom:1px solid var(--rule)}
+  .dim:last-child{border-bottom:none}
+  .dim .name{font-weight:600;font-size:15px}
+  .dim .name .k{display:block;font-family:"JetBrains Mono",monospace;font-size:10.5px;color:var(--faint);font-weight:400;margin-top:2px}
+  .dim .body .bar{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+  .track{flex:1;height:7px;border-radius:4px;background:#ece6d8;overflow:hidden}
+  .fill{height:100%;border-radius:4px;transform-origin:left;animation:grow .7s cubic-bezier(.22,1,.36,1) both}
+  @keyframes grow{from{transform:scaleX(0)}}
+  .dim .sc{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--soft);min-width:30px;text-align:right}
+  .dim .rat{font-size:14px;color:var(--soft);line-height:1.5}
+
+  /* warnings */
+  .wcount{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--faint);letter-spacing:.04em}
+  .w{position:relative;background:var(--card);border:1px solid var(--rule);border-left-width:4px;border-radius:10px;
+    padding:13px 16px 15px;margin-bottom:11px;animation:rise .5s cubic-bezier(.22,1,.36,1) both;animation-delay:calc(var(--i,0)*55ms)}
+  @keyframes rise{from{opacity:0;transform:translateY(8px)}}
+  .w.crit{border-left-color:var(--crit)} .w.warn{border-left-color:var(--warn)} .w.info{border-left-color:var(--info)}
+  .w .row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:7px}
+  .sev{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:3px 7px;border-radius:5px;font-weight:500}
+  .sev.crit{color:var(--crit);background:var(--crit-bg)} .sev.warn{color:var(--warn);background:var(--warn-bg)} .sev.info{color:var(--info);background:var(--info-bg)}
+  .code{font-family:"JetBrains Mono",monospace;font-size:12.5px;font-weight:500}
+  .src{margin-left:auto;font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--faint);border:1px solid var(--rule-2);border-radius:20px;padding:2px 9px}
+  .w .msg{font-size:14.5px;line-height:1.5}
+  .ev{margin-top:10px;font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--soft);background:#f3eee2;border-radius:7px;padding:8px 11px;border-left:2px solid var(--rule-2);white-space:pre-wrap;word-break:break-word}
+  .ev::before{content:"evidence";display:block;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:4px}
+
+  /* hints */
+  ol.hints{list-style:none;counter-reset:h;margin:0;padding:0}
+  ol.hints li{counter-increment:h;position:relative;padding:11px 0 11px 42px;border-bottom:1px solid var(--rule);font-size:15px;line-height:1.5;color:var(--ink)}
+  ol.hints li:last-child{border-bottom:none}
+  ol.hints li::before{content:counter(h,decimal-leading-zero);position:absolute;left:0;top:11px;font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--faint);font-weight:500}
+
+  /* brief view */
+  .cards2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:620px){.cards2{grid-template-columns:1fr}.dim{grid-template-columns:1fr}}
+  .infcard{background:var(--card);border:1px solid var(--rule);border-radius:11px;padding:15px 17px}
+  .infcard .t{font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:7px}
+  .infcard .v{font-size:15px;line-height:1.5}
+  .gap{background:var(--card);border:1px solid var(--rule);border-radius:11px;padding:15px 17px;margin-top:13px}
+  .gap .fld{display:inline-block;font-family:"JetBrains Mono",monospace;font-size:11px;background:var(--warn-bg);color:var(--warn);padding:3px 8px;border-radius:5px;margin-bottom:8px}
+  .gap .reason{font-size:14.5px;color:var(--soft);margin-bottom:11px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px}
+  .chip{font-size:13px;border:1px solid var(--rule-2);border-radius:20px;padding:5px 13px;background:#fcfaf4}
+  .status{display:inline-flex;align-items:center;gap:8px;font-family:"JetBrains Mono",monospace;font-size:12px;padding:6px 13px;border-radius:8px;font-weight:500}
+  .status.ok{color:var(--ok);background:var(--ok-bg)} .status.clar{color:var(--warn);background:var(--warn-bg)}
+  .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="kicker">post audit · pipeline output</div>
+    <h1>Отчёт аудита поста</h1>
+    <p>Вставьте JSON-ответ пайплайна — <span class="mono">AuditReport</span> или <span class="mono">BriefCheck</span>. Вид распознаётся автоматически.</p>
+  </header>
+
+  <details class="io" open>
+    <summary><span class="chev">▾</span> Входной JSON</summary>
+    <div class="io-body">
+      <textarea id="src" spellcheck="false"></textarea>
+      <div class="btns">
+        <button class="primary" id="render">Отрисовать</button>
+        <button data-sample="audit">Пример: аудит</button>
+        <button data-sample="brief">Пример: бриф</button>
+        <button id="clear">Очистить</button>
+      </div>
+      <div class="err" id="err"></div>
+    </div>
+  </details>
+
+  <div id="out"></div>
+</div>
+
+<script type="application/json" id="sample-audit">
+{
+  "goalAlignment": {
+    "overall": 34,
+    "cappedBy": ["BURIED_LEDE", "GOAL_ACTION_MISMATCH"],
+    "dimensions": [
+      { "key": "hook",        "score": 2, "rationale": "Открывается голой ссылкой и «Кондуит zero-version:». Ни ставки, ни «зачем мне это»." },
+      { "key": "clarity",     "score": 2, "rationale": "Артефакт + задача + логистика + философия смешаны в одном дампе из нескольких сообщений." },
+      { "key": "audienceFit", "score": 3, "rationale": "Жаргон уместен для группы в контексте, но сырость и отсутствие структуры не уважают внимание." },
+      { "key": "goalService", "score": 2, "rationale": "Материалы и черновик для реакции даны (плюс), но три заявленных действия пост напрямую не запускает." },
+      { "key": "cta",         "score": 2, "rationale": "Призыв = логистика (куда писать), без дедлайна и персонального действия." }
+    ],
+    "summary": "Пост даёт материал для работы, но как мотиватор не собран: причина действовать спрятана в конце, а просьба не совпадает с целью."
+  },
+  "warnings": [
+    { "code": "BURIED_LEDE", "severity": "critical", "source": "llm", "message": "Мотивирующая рамка — самый сильный аргумент действовать — стоит в самом конце.", "evidence": "Любые и все важные решения так или иначе будут приняты" },
+    { "code": "GOAL_ACTION_MISMATCH", "severity": "critical", "source": "llm", "message": "Цель требует «написать свою версию кондуита», но пост этого не просит — ставит общую задачу «улучшить и превратить в схему».", "evidence": "вот этот наш кондуит улучшить и ... превратить в схему" },
+    { "code": "NO_CLEAR_CTA", "severity": "warning", "source": "llm", "message": "Призыв описывает, куда писать, но не что именно сделать каждому и к какому сроку.", "evidence": "Содержательные мысли лучше добавлять на miro-доску" },
+    { "code": "EFFORT_ASYMMETRY", "severity": "warning", "source": "llm", "message": "Сырой дамп при просьбе о вдумчивой работе демотивирует: «автор не вложился — почему должен я»." },
+    { "code": "WEAK_OPENING", "severity": "warning", "source": "rule", "message": "Первая строка — голая ссылка; на обрезке «…ещё» зацепки нет.", "evidence": "Справочник (https://agsagds.github.io/...) с чеклистами" },
+    { "code": "CHAT_DUMP_FORMAT", "severity": "warning", "source": "rule", "message": "Вставлены таймстемпы и подписи — выглядит как копипаст истории чата, а не собранный пост.", "evidence": "[6/5/26 5:10 PM] Pavel Trubin:" },
+    { "code": "TYPOS", "severity": "warning", "source": "rule", "message": "Опечатки бьют по доверию в посте, который просит о тщательной работе.", "evidence": "учестом · принтяия · принтяием · данны" },
+    { "code": "NO_STRUCTURE", "severity": "warning", "source": "rule", "message": "«Кондуит zero-version» — плоский список фрагментов без иерархии; тяжело реагировать построчно." }
+  ],
+  "rewriteHints": [
+    "Поднять рамку в начало: решения принимаются всегда, сложности по обе стороны от момента — это и есть зацепка.",
+    "Явный персональный CTA под цель: «прочитай справочник → напиши свою версию кондуита (3–5 строк) → предложи одну правку схемы», с дедлайном.",
+    "Развести артефакт / задачу / логистику; кондуит структурировать в список с иерархией.",
+    "Дать ссылке рамку: что внутри и зачем открыть до того, как писать свою версию.",
+    "Вычитать опечатки — особенно когда просишь о вдумчивой работе."
+  ]
+}
+</script>
+
+<script type="application/json" id="sample-brief">
+{
+  "status": "ok",
+  "inferred": {
+    "goal": "Активировать участников на 3 действия: прочитать материалы, написать свою версию кондуита, доработать схему",
+    "audience": "Рабочая группа по методологии принятия решений — коллеги в контексте, знают термины ЛПР / онтология / кондуит"
+  },
+  "gaps": [
+    { "field": "audience", "reason": "Задана как «участники» без уровня/контекста; выведена из текста, но не подтверждена", "candidates": ["Коллеги глубоко в контексте", "Новые участники, нужен ввод в тему", "Смешанная группа"] }
+  ]
+}
+</script>
+
+<script>
+  const DIM_LABELS = { hook:"Зацепка", clarity:"Ясность", audienceFit:"Аудитория", goalService:"Служение цели", cta:"Призыв" };
+  const SEV_ORDER = { critical:0, warning:1, info:2 };
+  const SEV_CLASS = { critical:"crit", warning:"warn", info:"info" };
+  const SEV_RU    = { critical:"critical", warning:"warning", info:"info" };
+
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+  const bandColor = pct => pct < 40 ? "var(--crit)" : pct < 70 ? "var(--warn)" : "var(--ok)";
+  const dimColor  = s   => s <= 2 ? "var(--crit)" : s === 3 ? "var(--warn)" : "var(--ok)";
+
+  function gauge(pct){
+    const r = 60, c = 2 * Math.PI * r, off = c * (1 - Math.max(0, Math.min(100, pct)) / 100);
+    const col = bandColor(pct);
+    return `<div class="gauge">
+      <svg width="138" height="138" viewBox="0 0 138 138">
+        <circle cx="69" cy="69" r="${r}" fill="none" stroke="#ece6d8" stroke-width="9"/>
+        <circle cx="69" cy="69" r="${r}" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round"
+          stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${c.toFixed(1)}" transform="rotate(-90 69 69)"
+          style="animation:dash 1s cubic-bezier(.22,1,.36,1) forwards"/>
+        <style>@keyframes dash{to{stroke-dashoffset:${off.toFixed(1)}}}</style>
+      </svg>
+      <div class="num"><b style="color:${col}">${pct}</b><span>из 100</span></div>
+    </div>`;
+  }
+
+  function renderAudit(d){
+    const ga = d.goalAlignment || {};
+    const dims = ga.dimensions || [];
+    const warns = (d.warnings || []).slice().sort((a,b)=>(SEV_ORDER[a.severity]??9)-(SEV_ORDER[b.severity]??9));
+    const counts = warns.reduce((m,w)=>(m[w.severity]=(m[w.severity]||0)+1,m),{});
+    const countStr = ["critical","warning","info"].filter(s=>counts[s]).map(s=>`${counts[s]} ${s}`).join(" · ");
+
+    let html = `<section class="sec"><div class="head">
+      ${gauge(Number(ga.overall)||0)}
+      <div class="lead">
+        <p class="verdict">${esc(ga.summary || "")}</p>
+        ${(ga.cappedBy||[]).length ? `<div class="capped"><span class="lbl">срезано:</span>${ga.cappedBy.map(c=>`<span class="tag crit mono">${esc(c)}</span>`).join("")}</div>`:""}
+      </div></div></section>`;
+
+    if (dims.length){
+      html += `<section class="sec"><div class="sec-h"><span>Измерения цели</span><span class="wcount">оценка / 5</span></div>`;
+      html += dims.map(dm=>{
+        const s = Number(dm.score)||0, pct = (s/5)*100, col = dimColor(s);
+        return `<div class="dim">
+          <div class="name">${esc(DIM_LABELS[dm.key]||dm.key)}<span class="k">${esc(dm.key)}</span></div>
+          <div class="body">
+            <div class="bar"><div class="track"><div class="fill" style="width:${pct}%;background:${col}"></div></div><div class="sc">${s}/5</div></div>
+            <div class="rat">${esc(dm.rationale||"")}</div>
+          </div></div>`;
+      }).join("");
+      html += `</section>`;
+    }
+
+    if (warns.length){
+      html += `<section class="sec"><div class="sec-h"><span>Предупреждения</span><span class="wcount">${esc(countStr)}</span></div>`;
+      html += warns.map((w,i)=>{
+        const cl = SEV_CLASS[w.severity]||"info";
+        return `<div class="w ${cl}" style="--i:${i}">
+          <div class="row">
+            <span class="sev ${cl}">${esc(SEV_RU[w.severity]||w.severity)}</span>
+            <span class="code">${esc(w.code||"")}</span>
+            ${w.source?`<span class="src">${esc(w.source)}</span>`:""}
+          </div>
+          <div class="msg">${esc(w.message||"")}</div>
+          ${w.evidence?`<div class="ev">${esc(w.evidence)}</div>`:""}
+        </div>`;
+      }).join("");
+      html += `</section>`;
+    }
+
+    if ((d.rewriteHints||[]).length){
+      html += `<section class="sec"><div class="sec-h"><span>Что переписать</span></div>
+        <ol class="hints">${d.rewriteHints.map(h=>`<li>${esc(h)}</li>`).join("")}</ol></section>`;
+    }
+    return html;
+  }
+
+  function renderBrief(d){
+    const ok = d.status === "ok";
+    let html = `<section class="sec">
+      <span class="status ${ok?"ok":"clar"}"><span class="dot"></span>${ok?"бриф принят — прогон по инферированным данным":"нужны уточнения"}</span>
+      <div class="cards2" style="margin-top:16px">
+        <div class="infcard"><div class="t">Цель (inferred)</div><div class="v">${esc(d.inferred?.goal||"—")}</div></div>
+        <div class="infcard"><div class="t">Аудитория (inferred)</div><div class="v">${esc(d.inferred?.audience||"—")}</div></div>
+      </div></section>`;
+    if ((d.gaps||[]).length){
+      html += `<section class="sec"><div class="sec-h"><span>Пробелы</span></div>`;
+      html += d.gaps.map(g=>`<div class="gap">
+        <span class="fld">${esc(g.field)}</span>
+        <div class="reason">${esc(g.reason||"")}</div>
+        <div class="chips">${(g.candidates||[]).map(c=>`<span class="chip">${esc(c)}</span>`).join("")}</div>
+      </div>`).join("");
+      html += `</section>`;
+    }
+    return html;
+  }
+
+  function render(){
+    const err = $("#err"); err.style.display = "none";
+    let data;
+    try { data = JSON.parse($("#src").value); }
+    catch(e){ err.textContent = "Невалидный JSON: " + e.message; err.style.display = "block"; $("#out").innerHTML=""; return; }
+    const out = $("#out");
+    if (data && data.goalAlignment) out.innerHTML = renderAudit(data);
+    else if (data && (data.status || data.gaps || data.inferred)) out.innerHTML = renderBrief(data);
+    else { err.textContent = "Не похоже ни на AuditReport, ни на BriefCheck (нет goalAlignment / status)."; err.style.display="block"; out.innerHTML=""; }
+  }
+
+  function loadSample(which){
+    $("#src").value = $("#sample-"+which).textContent.trim();
+    render();
+  }
+
+  $("#render").addEventListener("click", render);
+  $("#clear").addEventListener("click", ()=>{ $("#src").value=""; $("#out").innerHTML=""; $("#err").style.display="none"; });
+  document.querySelectorAll("[data-sample]").forEach(b=>b.addEventListener("click",()=>loadSample(b.dataset.sample)));
+
+  loadSample("audit");
+</script>
+</body>
+</html>
