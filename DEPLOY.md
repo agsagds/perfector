@@ -26,6 +26,8 @@ modal secret create huggingface HF_TOKEN=hf_...
 
 Then add `secrets=[modal.Secret.from_name("huggingface")]` to `@app.cls` in `modal/inference.py`.
 
+Optional: protect the endpoint with a shared secret — export `AUDIT_TOKEN=<random string>` before running `./scripts/deploy_modal.sh`. When set, every request must carry a matching `X-Audit-Token` header (the Space sends it automatically when its `MODAL_AUDIT_TOKEN` secret is set to the same value).
+
 ## 3. Hugging Face Space
 
 Create Space under `build-small-hackathon` (Gradio, public).
@@ -45,7 +47,8 @@ In Space **Settings → Repository secrets**:
 
 | Key | Value |
 |-----|--------|
-| `MODAL_AUDIT_URL` | Modal endpoint base URL (no `/audit` suffix) |
+| `MODAL_AUDIT_URL` | Modal endpoint URL (the endpoint is served at the URL root — no path suffix) |
+| `MODAL_AUDIT_TOKEN` | (optional) same value as `AUDIT_TOKEN` used at Modal deploy time |
 
 ## 4. Remote smoke
 

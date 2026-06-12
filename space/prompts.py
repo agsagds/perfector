@@ -83,8 +83,8 @@ FEW_SHOT_ASSISTANT = """{
   },
   "auditReport": {
     "goalAlignment": {
-      "overall": 48,
-      "cappedBy": [],
+      "overall": 39,
+      "cappedBy": ["GOAL_ACTION_MISMATCH"],
       "dimensions": [
         { "key": "hook", "score": 2, "rationale": "Opens with generic 'webinar on metrics' — no benefit or hook." },
         { "key": "clarity", "score": 3, "rationale": "Topic is clear but when/where/how to register is missing." },

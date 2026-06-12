@@ -3,11 +3,21 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
 
 import modal
+
+try:  # fastapi is only guaranteed inside the Modal image
+    from fastapi import Header, HTTPException
+except ModuleNotFoundError:  # deploy-time stub so the module imports locally
+
+    def Header(default=None, **_kwargs):
+        return default
+
+    HTTPException = Exception
 
 # Allow importing prompts from sibling space/ directory
 SPACE_DIR = Path(__file__).resolve().parents[1] / "space"
@@ -19,7 +29,8 @@ image = (
     modal.Image.debian_slim(python_version="3.11")
     .pip_install(
         "torch>=2.4.0",
-        "transformers>=4.51.0",
+        # gemma4 support; the model's config.json is written by transformers 5.5.0.dev0
+        "transformers>=5.5.0",
         "accelerate>=1.0.0",
         "huggingface_hub>=0.27.0",
         "sentencepiece>=0.2.0",
@@ -39,14 +50,14 @@ app = modal.App("post-audit-inference", image=image)
 class AuditModel:
     @modal.enter()
     def load(self):
-        import torch
-        from transformers import AutoModelForCausalLM, AutoTokenizer
+        from transformers import AutoModelForCausalLM, AutoProcessor
 
         sys.path.insert(0, "/root/space")
-        self.tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
+        # Loading per the official gemma-4-E4B-it model card (AutoProcessor + AutoModelForCausalLM)
+        self.processor = AutoProcessor.from_pretrained(MODEL_ID)
         self.model = AutoModelForCausalLM.from_pretrained(
             MODEL_ID,
-            torch_dtype=torch.bfloat16,
+            dtype="auto",
             device_map="auto",
         )
         self.model.eval()
@@ -57,14 +68,15 @@ class AuditModel:
         if retry_suffix:
             messages = messages + [{"role": "user", "content": retry_suffix}]
 
-        prompt = self.tokenizer.apply_chat_template(
+        prompt = self.processor.apply_chat_template(
             messages,
             tokenize=False,
             add_generation_prompt=True,
+            enable_thinking=False,  # we need raw JSON, not reasoning traces
         )
         prompt += "{"
 
-        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
+        inputs = self.processor(text=prompt, return_tensors="pt").to(self.model.device)
         with torch.no_grad():
             out = self.model.generate(
                 **inputs,
@@ -72,9 +84,8 @@ class AuditModel:
                 do_sample=False,
                 temperature=None,
                 top_p=None,
-                pad_token_id=self.tokenizer.eos_token_id,
             )
-        text = self.tokenizer.decode(out[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True)
+        text = self.processor.decode(out[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True)
         return "{" + text.strip()
 
     @modal.method()
@@ -101,9 +112,14 @@ class AuditModel:
             return parse_llm_json(raw)
 
 
-@app.function()
+# Optional shared secret: export AUDIT_TOKEN before `modal deploy` to require
+# an X-Audit-Token header on every request; leave unset to keep the endpoint open.
+@app.function(secrets=[modal.Secret.from_dict({"AUDIT_TOKEN": os.environ.get("AUDIT_TOKEN", "")})])
 @modal.fastapi_endpoint(method="POST")
-def audit_endpoint(body: dict[str, Any]):
+def audit_endpoint(body: dict[str, Any], x_audit_token: str | None = Header(default=None)):
+    expected = os.environ.get("AUDIT_TOKEN", "")
+    if expected and x_audit_token != expected:
+        raise HTTPException(status_code=401, detail="Invalid or missing X-Audit-Token header")
     platform = body.get("platform", "other")
     goal = body.get("goal", "")
     audience = body.get("audience", "")

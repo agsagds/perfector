@@ -36,10 +36,15 @@ def call_modal_audit(
             "post": post,
         }
     ).encode("utf-8")
+    # Modal serves a single fastapi_endpoint at the root of its URL — no path suffix.
+    headers = {"Content-Type": "application/json"}
+    token = os.environ.get("MODAL_AUDIT_TOKEN")
+    if token:
+        headers["X-Audit-Token"] = token
     req = urllib.request.Request(
-        url.rstrip("/") + "/audit",
+        url.rstrip("/"),
         data=payload,
-        headers={"Content-Type": "application/json"},
+        headers=headers,
         method="POST",
     )
     try:

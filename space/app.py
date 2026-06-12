@@ -69,6 +69,8 @@ First run may take ~30s while the GPU container starts.
         ex_webinar = gr.Button("Load example: weak webinar CTA")
         ex_chat = gr.Button("Load example: chat dump")
 
+    status_report = gr.HTML()
+
     with gr.Accordion("Raw JSON", open=False):
         raw_json = gr.JSON(label="Pipeline output")
 
