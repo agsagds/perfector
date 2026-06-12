@@ -218,4 +218,4 @@ __marimo__/
 .streamlit/secrets.toml
 
 # Modal local state
-modal/.modal/
+.modal/
