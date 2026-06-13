@@ -2,14 +2,21 @@
 # Local smoke test: rules + mock LLM + merge + HTML render (no Gradio server).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+# Prefer the project venv (matches the deployed Python/Gradio); fall back to python3.
+PYTHON="${PYTHON:-python3}"
+if [ -x "$ROOT/.venv/bin/python" ]; then
+  PYTHON="$ROOT/.venv/bin/python"
+fi
+
 cd "$ROOT/space"
 
 echo "== unit tests =="
-python3 -m unittest discover -s tests -v
+"$PYTHON" -m unittest discover -s tests -v
 
 echo ""
 echo "== mock audit pipeline =="
-python3 - <<'PY'
+"$PYTHON" - <<'PY'
 from audit_client import call_modal_audit
 from examples import EXAMPLE_WEBINAR, EXAMPLE_CHAT_DUMP
 from merge import merge_audit, viewer_payload

@@ -1,1 +1,6 @@
-gradio>=5.0.0
+# Pinned to match the HF Space SDK version in README.md frontmatter (sdk_version).
+# Keep these two in sync so local dev runs the same Gradio as the deployed Space.
+gradio==5.12.0
+# gradio 5.12.0 imports `requests` from its CLI on `import gradio` but does not
+# declare it; the HF base image ships requests, a bare local venv does not.
+requests>=2.31.0

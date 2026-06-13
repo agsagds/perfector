@@ -1,6 +1,5 @@
+# Local-only: the `modal` CLI used to deploy/serve the inference app.
+# The GPU container's own dependencies (torch, transformers, …) are declared
+# in inference.py via image.pip_install(...) — that is the single source of
+# truth for what runs on Modal. Do not duplicate them here.
 modal>=0.73.0
-torch>=2.4.0
-transformers>=4.51.0
-accelerate>=1.0.0
-huggingface_hub>=0.27.0
-sentencepiece>=0.2.0

@@ -38,14 +38,36 @@ Model: `google/gemma-4-E4B-it` — **4.5B effective**, Tiny Titan eligible, ≤3
 
 ## Local development
 
+Requires [`uv`](https://docs.astral.sh/uv/). The Python version is pinned in
+`.python-version` (3.13); the Space SDK's Gradio version is pinned in
+[space/requirements.txt](space/requirements.txt) so local runs match the
+deployed Space. Your system `python3` may be too old for Gradio 5.x — let `uv`
+manage the interpreter.
+
 ```bash
-cd space
-pip install -r requirements.txt
-python -m unittest discover -s tests -v
-python app.py
+make venv     # create .venv (3.13) and install space + modal deps
+make test     # unit tests
+make smoke    # offline pipeline: rules + mock LLM + merge + render
+make dev      # Gradio app with hot reload at http://localhost:7860
 ```
 
-Without `MODAL_AUDIT_URL`, the Space uses a **mock LLM** (few-shot-shaped responses) so UI and rules are testable offline.
+`make help` lists every task. Without `MODAL_AUDIT_URL`, the app uses a **mock
+LLM** (few-shot-shaped responses) so the UI, rules, and rendering are fully
+testable offline.
+
+### Iterating against the live model
+
+`modal serve` gives you a hot-reloading GPU endpoint without a full deploy:
+
+```bash
+make serve-modal                              # prints an ephemeral *.modal.run URL
+export MODAL_AUDIT_URL=https://…modal.run     # in another shell
+make dev                                       # the local app now calls real Gemma 4
+make smoke-remote                              # end-to-end check against the endpoint
+```
+
+Prefer the manual commands? They're in the [Makefile](Makefile) — e.g.
+`cd space && ../.venv/bin/gradio app.py` for hot reload.
 
 ## Deploy Modal
 
