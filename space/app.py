@@ -12,27 +12,32 @@ from merge import merge_audit, viewer_payload
 from render import render_report_html
 from rules import run_rules
 
-# Shared visual language with the report (see render.py :root).
+# Shared visual language with the report (see render.py :root): cool slate,
+# Space Grotesk for the verdict word, IBM Plex Mono for meta.
 _STATUS_CSS = """
 <style>
-  .pa-status{font-family:"Golos Text",system-ui,sans-serif;background:#fffdf8;
-    border:1px solid #e7e0d2;border-radius:14px;padding:18px 20px;margin:4px 0 2px;
-    display:flex;align-items:center;gap:16px;color:#211f1b}
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap');
+  .pa-status{font-family:"IBM Plex Sans",system-ui,sans-serif;background:#ffffff;
+    border:1px solid #e3e7ee;border-radius:13px;padding:18px 20px;margin:4px 0 2px;
+    display:flex;align-items:center;gap:16px;color:#161b22}
   .pa-status .pa-spinner{flex:none;width:26px;height:26px;border-radius:50%;
-    border:3px solid #e7e0d2;border-top-color:#211f1b;animation:pa-spin .9s linear infinite}
+    border:3px solid #e6eaf0;border-top-color:#161b22;animation:pa-spin .9s linear infinite}
   .pa-status .pa-txt{display:flex;flex-direction:column;gap:3px;min-width:0}
-  .pa-status .pa-txt strong{font-size:15px}
-  .pa-status .pa-txt span{font-size:13px;color:#5c574d;line-height:1.45}
-  .pa-status.pa-done{border-left:4px solid #2e7d4f}
-  .pa-status.pa-error{border-left:4px solid #b3261e}
-  .pa-status .pa-meta{font-family:"JetBrains Mono",monospace;font-size:11px;
-    letter-spacing:.04em;color:#928c7e}
-  .pa-bar{position:relative;height:4px;border-radius:4px;background:#ece5d6;
+  .pa-status .pa-txt strong{font-family:"Space Grotesk","IBM Plex Sans",sans-serif;font-size:16px;font-weight:700;letter-spacing:-.01em}
+  .pa-status .pa-txt span{font-size:13px;color:#586172;line-height:1.45}
+  .pa-status.pa-done{border-left:4px solid #0e7a4f}
+  .pa-status.pa-done .pa-txt strong{color:#0e7a4f}
+  .pa-status.pa-error{border-left:4px solid #c12626}
+  .pa-status.pa-error .pa-txt strong{color:#c12626}
+  .pa-status .pa-meta{font-family:"IBM Plex Mono",monospace;font-size:11px;
+    letter-spacing:.04em;color:#8a93a3}
+  .pa-bar{position:relative;height:4px;border-radius:4px;background:#e6eaf0;
     overflow:hidden;margin-top:14px}
   .pa-bar > span{position:absolute;top:0;left:0;height:100%;width:40%;border-radius:4px;
-    background:#211f1b;animation:pa-slide 1.25s ease-in-out infinite}
+    background:#161b22;animation:pa-slide 1.25s ease-in-out infinite}
   @keyframes pa-spin{to{transform:rotate(360deg)}}
   @keyframes pa-slide{0%{left:-40%}50%{left:60%}100%{left:110%}}
+  @media(prefers-reduced-motion:reduce){.pa-status .pa-spinner{animation:none}.pa-bar > span{animation:none;width:100%;opacity:.4}}
 </style>
 """
 
