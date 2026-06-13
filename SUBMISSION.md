@@ -19,12 +19,10 @@ Hybrid pipeline:
 • deterministic rule linters (hashtags, chat dumps, deadlines…)
 • Gemma 4 E4B (4.5B effective) on Modal for judgment + rewrite hints
 
-Try it: [YOUR_SPACE_URL]
+Try it: https://huggingface.co/spaces/build-small-hackathon/post-audit
 
 #buildSmallHackathon #Gradio #Modal #Gemma
 ```
-
-Replace `[YOUR_SPACE_URL]` after Space is live.
 
 ## Space secrets
 

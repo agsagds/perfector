@@ -129,7 +129,7 @@ Copy the deployed web URL. Create a Modal secret `huggingface` with `HF_TOKEN` i
 
 ## Social post template
 
-> Built for #buildSmallHackathon: **Post Audit** — audit your social post against goal & audience before you publish. Hybrid rule linters + Gemma 4 E4B on @Modal. Try it: [SPACE_URL]
+> Built for #buildSmallHackathon: **Post Audit** — audit your social post against goal & audience before you publish. Hybrid rule linters + Gemma 4 E4B on @Modal. Try it: https://huggingface.co/spaces/build-small-hackathon/post-audit
 
 ## Hackathon checklist
 

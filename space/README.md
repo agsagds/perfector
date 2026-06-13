@@ -8,7 +8,7 @@ sdk_version: "5.12.0"
 app_file: app.py
 pinned: false
 license: apache-2.0
-short_description: Audit social posts against goal and audience (Gemma 4 E4B + rules)
+short_description: Audit posts against goal & audience (Gemma 4 + rules)
 ---
 
 # Post Audit
