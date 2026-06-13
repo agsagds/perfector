@@ -11,8 +11,14 @@ help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
 		| sort | awk 'BEGIN {FS = ":.*?## "} {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
 
+# Recreate the venv from scratch whenever a requirements file changes, so deps
+# dropped from the requirements (e.g. torch, removed from modal_app) don't
+# linger. `uv pip install` only adds/upgrades, never prunes; `uv pip sync` is
+# not usable here because these files list only top-level requirements and it
+# would drop their (unlisted) transitive deps.
 $(VENV): .python-version space/requirements.txt modal_app/requirements.txt
-	uv venv --allow-existing
+	rm -rf $(VENV)
+	uv venv
 	uv pip install -r space/requirements.txt -r modal_app/requirements.txt
 	@touch $(VENV)
 
