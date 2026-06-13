@@ -55,6 +55,31 @@ make dev      # Gradio app with hot reload at http://localhost:7860
 LLM** (few-shot-shaped responses) so the UI, rules, and rendering are fully
 testable offline.
 
+### Iterating against a local LLM (Ollama)
+
+Run a real model on your machine — no Modal credits, no GPU — to exercise the
+full prompt → JSON → merge pipeline. Uses [Ollama](https://ollama.com).
+
+```bash
+make pull-model      # downloads gemma3:4b (3.3 GB) — fits comfortably in 16 GB RAM
+make dev-local       # launches the app wired to the local model
+```
+
+The backend is selected by `OLLAMA_MODEL`: when set (and `MODAL_AUDIT_URL` is
+not), [audit_client.py](space/audit_client.py) builds the same messages as the
+Modal service and POSTs them to Ollama's `/api/chat` with JSON-constrained
+output. Override the model — e.g. for production parity at the cost of more
+RAM/slower first token:
+
+```bash
+make pull-model OLLAMA_MODEL=gemma4:e4b    # ~9.6 GB, tight on 16 GB
+make dev-local   OLLAMA_MODEL=gemma4:e4b
+```
+
+`OLLAMA_URL` (default `http://localhost:11434`) points at a remote Ollama host
+if you run the model elsewhere. The first request after launch is slow while
+Ollama loads the model into memory. Precedence is **Modal → Ollama → mock**.
+
 ### Iterating against the live model
 
 `modal serve` gives you a hot-reloading GPU endpoint without a full deploy:
