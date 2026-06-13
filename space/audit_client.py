@@ -16,6 +16,12 @@ def get_modal_url() -> str | None:
     return os.environ.get("MODAL_AUDIT_URL") or os.environ.get("MODAL_AUDIT_ENDPOINT")
 
 
+def get_modal_timeout() -> float:
+    # Warm latency is ~50s, but a cold container must download + load the ~16 GB
+    # model first, which pushes the first request past 2 min. Generous default.
+    return float(os.environ.get("MODAL_AUDIT_TIMEOUT", "300"))
+
+
 def get_ollama_model() -> str | None:
     """Local Ollama model tag (e.g. 'gemma3:4b'); enables the local-LLM path."""
     return os.environ.get("OLLAMA_MODEL")
@@ -47,9 +53,11 @@ def call_modal_audit(
     audience: str,
     post: str,
     *,
-    timeout: float = 120.0,
+    timeout: float | None = None,
 ) -> dict[str, Any]:
     """Dispatch to a backend: Modal endpoint, local Ollama, or deterministic mock."""
+    if timeout is None:
+        timeout = get_modal_timeout()
     url = get_modal_url()
     if not url:
         if get_ollama_model():

@@ -13,10 +13,29 @@ Run these on a machine with `pip`, `modal`, and `hf` CLI authenticated.
 ```bash
 pip install modal
 modal setup
-./scripts/deploy_modal.sh
 ```
 
-Copy the `audit_endpoint` URL from deploy output.
+### Environments (dev / prod split)
+
+Deploys are scoped to a Modal **environment**. Keep prod isolated from dev/staging:
+
+```bash
+modal environment create prod          # once
+# prod: token-protected, its own endpoint URL
+AUDIT_TOKEN=$(python3 -c 'import secrets;print(secrets.token_urlsafe(32))') \
+  ./scripts/deploy_modal.sh prod
+# dev/staging in the default 'main' env (also protect it):
+AUDIT_TOKEN=$(python3 -c 'import secrets;print(secrets.token_urlsafe(32))') \
+  ./scripts/deploy_modal.sh main
+```
+
+Each environment gets a distinct `audit_endpoint` URL — copy the one for the
+environment you're wiring to the Space. **Use a different `AUDIT_TOKEN` per
+environment** so a leaked dev token can't reach prod. For local iteration, prefer
+`make serve-modal` (ephemeral) or the Ollama path — don't point local dev at prod.
+
+> The endpoint checks the token in the lightweight CPU web function **before**
+> invoking the GPU, so unauthorized requests are rejected without burning credits.
 
 Optional: create Modal secret `huggingface` with `HF_TOKEN` if model download requires it:
 
@@ -25,8 +44,6 @@ modal secret create huggingface HF_TOKEN=hf_...
 ```
 
 Then add `secrets=[modal.Secret.from_name("huggingface")]` to `@app.cls` in `modal_app/inference.py`.
-
-Optional: protect the endpoint with a shared secret — export `AUDIT_TOKEN=<random string>` before running `./scripts/deploy_modal.sh`. When set, every request must carry a matching `X-Audit-Token` header (the Space sends it automatically when its `MODAL_AUDIT_TOKEN` secret is set to the same value).
 
 ## 3. Hugging Face Space
 
@@ -54,8 +71,13 @@ In Space **Settings → Repository secrets**:
 
 ```bash
 export MODAL_AUDIT_URL=https://YOUR-WORKSPACE--post-audit-inference-audit-endpoint.modal.run
+export MODAL_AUDIT_TOKEN=...   # if the endpoint is token-protected
 python3 scripts/smoke_remote.py
 ```
+
+The first request cold-starts the container (downloads + loads the ~16 GB model,
+~2 min); warm latency is ~50s. The client timeout defaults to 300s and is
+configurable via `MODAL_AUDIT_TIMEOUT`.
 
 ## 5. Submission
 
