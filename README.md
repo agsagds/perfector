@@ -77,8 +77,17 @@ make dev-local   OLLAMA_MODEL=gemma4:e4b
 ```
 
 `OLLAMA_URL` (default `http://localhost:11434`) points at a remote Ollama host
-if you run the model elsewhere. The first request after launch is slow while
-Ollama loads the model into memory. Precedence is **Modal → Ollama → mock**.
+if you run the model elsewhere; `OLLAMA_TIMEOUT` (default 300s) bounds a call.
+Precedence is **Modal → Ollama → mock**.
+
+**Speed:** local inference is slow — a full audit is ~2.5 min on an M1/16 GB
+with `gemma3:4b` (large few-shot prompt + ~600-token JSON), and the first call
+adds model-load time. For a snappier edit loop where output quality doesn't
+matter (you're testing plumbing, not the model), use a smaller model:
+
+```bash
+make dev-local OLLAMA_MODEL=gemma3:1b    # much faster, lower-quality output
+```
 
 ### Iterating against the live model
 

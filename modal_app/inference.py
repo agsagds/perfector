@@ -50,11 +50,13 @@ app = modal.App("post-audit-inference", image=image)
 class AuditModel:
     @modal.enter()
     def load(self):
-        from transformers import AutoModelForCausalLM, AutoProcessor
+        from transformers import AutoModelForCausalLM, AutoTokenizer
 
         sys.path.insert(0, "/root/space")
-        # Loading per the official gemma-4-E4B-it model card (AutoProcessor + AutoModelForCausalLM)
-        self.processor = AutoProcessor.from_pretrained(MODEL_ID)
+        # Text-only audit: AutoTokenizer, not AutoProcessor. Gemma 4 is multimodal,
+        # so AutoProcessor (Gemma4Processor) requires image backends (PIL/torchvision)
+        # we don't need and don't ship. The tokenizer carries the same chat template.
+        self.tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
         self.model = AutoModelForCausalLM.from_pretrained(
             MODEL_ID,
             dtype="auto",
@@ -68,7 +70,7 @@ class AuditModel:
         if retry_suffix:
             messages = messages + [{"role": "user", "content": retry_suffix}]
 
-        prompt = self.processor.apply_chat_template(
+        prompt = self.tokenizer.apply_chat_template(
             messages,
             tokenize=False,
             add_generation_prompt=True,
@@ -76,7 +78,7 @@ class AuditModel:
         )
         prompt += "{"
 
-        inputs = self.processor(text=prompt, return_tensors="pt").to(self.model.device)
+        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
         with torch.no_grad():
             out = self.model.generate(
                 **inputs,
@@ -84,8 +86,9 @@ class AuditModel:
                 do_sample=False,
                 temperature=None,
                 top_p=None,
+                pad_token_id=self.tokenizer.eos_token_id,
             )
-        text = self.processor.decode(out[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True)
+        text = self.tokenizer.decode(out[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True)
         return "{" + text.strip()
 
     @modal.method()

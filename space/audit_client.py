@@ -25,6 +25,12 @@ def get_ollama_url() -> str:
     return os.environ.get("OLLAMA_URL", "http://localhost:11434")
 
 
+def get_ollama_timeout() -> float:
+    # Local CPU/Metal inference is slow: a full audit is ~2.5 min on an M1 with
+    # gemma3:4b, and the first (cold) call adds model-load time. Generous default.
+    return float(os.environ.get("OLLAMA_TIMEOUT", "300"))
+
+
 def backend_label() -> str:
     """Human-readable description of the inference backend run() will use."""
     if get_modal_url():
@@ -117,9 +123,11 @@ def _call_ollama(
     audience: str,
     post: str,
     *,
-    timeout: float = 180.0,
+    timeout: float | None = None,
 ) -> dict[str, Any]:
     """Run the audit against a local Ollama model. First call may be slow (model load)."""
+    if timeout is None:
+        timeout = get_ollama_timeout()
     model = get_ollama_model()
     messages = build_messages(platform, goal, audience, post)
     raw = _ollama_chat(model, messages, timeout)
