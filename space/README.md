@@ -20,3 +20,8 @@ Brief-aware social post audit for the [build-small-hackathon](https://huggingfac
 **Host:** Rule linters + deterministic score recomputation
 
 Set Space secret `MODAL_AUDIT_URL` to your deployed Modal web endpoint base URL (without trailing `/audit`).
+
+## Authors
+
+- Eugene Pasternak — [`pasternake`](https://huggingface.co/pasternake)
+- Pavel Trubin — [`agsagds`](https://huggingface.co/agsagds)

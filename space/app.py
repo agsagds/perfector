@@ -113,6 +113,49 @@ def load_example(example: dict):
     return example["platform"], example["goal"], example["audience"], example["post"]
 
 
+# Dark mode in Gradio is just a `dark` class on <body> (the served bundle does
+# `document.body.classList.add("dark")`); toggling it flips every theme CSS var to
+# its `_dark` variant. The report/status cards pin their own light colors
+# (color-scheme:light) on purpose, so they stay legible either way.
+#
+# Standalone-only by design: this matches Gradio's *standalone* mode (a hosted HF
+# Space — our deploy target). If this app is ever embedded as a <gradio-app> on
+# another site, Gradio puts `dark` on the host's parentElement and renders into a
+# shadow root, so both `document.body` and `getElementById` below would miss and
+# the toggle would silently no-op.
+#
+# We persist the choice to localStorage so a manual toggle survives a reload;
+# `_THEME_INIT_JS` re-applies it on load (otherwise refresh resets to the system
+# preference / ?__theme). The imperative `textContent` write is safe only because
+# `theme_btn` is never wired as an event *output* — Svelte never re-renders the
+# button, so it won't clobber our label. Don't add it as an output without moving
+# the labeling into the handler's return value.
+_THEME_TOGGLE_JS = """
+() => {
+  const dark = document.body.classList.toggle('dark');
+  try { localStorage.setItem('pa-theme', dark ? 'dark' : 'light'); } catch (e) {}
+  const b = document.getElementById('pa-theme-toggle');
+  if (b) b.textContent = dark ? '☀ Light mode' : '☾ Dark mode';
+}
+"""
+
+# Re-apply the saved choice and label the button for the *current* state on load.
+# Without the saved choice the app falls back to whatever Gradio picked (system
+# preference or ?__theme=dark) before the user ever clicks.
+_THEME_INIT_JS = """
+() => {
+  let dark = document.body.classList.contains('dark');
+  try {
+    const saved = localStorage.getItem('pa-theme');
+    if (saved === 'dark' && !dark) { document.body.classList.add('dark'); dark = true; }
+    else if (saved === 'light' && dark) { document.body.classList.remove('dark'); dark = false; }
+  } catch (e) {}
+  const b = document.getElementById('pa-theme-toggle');
+  if (b) b.textContent = dark ? '☀ Light mode' : '☾ Dark mode';
+}
+"""
+
+
 # Page identity matches the report (render.py): cool slate instrument panel,
 # Space Grotesk display, IBM Plex Sans body, IBM Plex Mono labels/codes.
 _THEME = gr.themes.Base(
@@ -204,6 +247,7 @@ with gr.Blocks(title="Post Audit", theme=_THEME, css=_PAGE_CSS) as demo:
         audit_btn = gr.Button("Run audit", variant="primary")
         ex_webinar = gr.Button("Load example: weak webinar CTA")
         ex_chat = gr.Button("Load example: chat dump")
+        theme_btn = gr.Button("☾ Dark mode", elem_id="pa-theme-toggle", scale=0)
 
     status_report = gr.HTML()
 
@@ -224,6 +268,9 @@ with gr.Blocks(title="Post Audit", theme=_THEME, css=_PAGE_CSS) as demo:
         fn=lambda: load_example(EXAMPLE_CHAT_DUMP),
         outputs=[platform, goal, audience, post],
     )
+    theme_btn.click(fn=None, inputs=None, outputs=None, js=_THEME_TOGGLE_JS)
+
+    demo.load(fn=None, inputs=None, outputs=None, js=_THEME_INIT_JS)
 
 if __name__ == "__main__":
     demo.launch(theme=_THEME, css=_PAGE_CSS)
