@@ -12,27 +12,32 @@ from merge import merge_audit, viewer_payload
 from render import render_report_html
 from rules import run_rules
 
-# Shared visual language with the report (see render.py :root).
+# Shared visual language with the report (see render.py :root): cool slate,
+# Space Grotesk for the verdict word, IBM Plex Mono for meta.
 _STATUS_CSS = """
 <style>
-  .pa-status{font-family:"Golos Text",system-ui,sans-serif;background:#fffdf8;
-    border:1px solid #e7e0d2;border-radius:14px;padding:18px 20px;margin:4px 0 2px;
-    display:flex;align-items:center;gap:16px;color:#211f1b}
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap');
+  .pa-status{font-family:"IBM Plex Sans",system-ui,sans-serif;background:#ffffff;
+    border:1px solid #e3e7ee;border-radius:13px;padding:18px 20px;margin:4px 0 2px;
+    display:flex;align-items:center;gap:16px;color:#161b22;color-scheme:light}
   .pa-status .pa-spinner{flex:none;width:26px;height:26px;border-radius:50%;
-    border:3px solid #e7e0d2;border-top-color:#211f1b;animation:pa-spin .9s linear infinite}
+    border:3px solid #e6eaf0;border-top-color:#161b22;animation:pa-spin .9s linear infinite}
   .pa-status .pa-txt{display:flex;flex-direction:column;gap:3px;min-width:0}
-  .pa-status .pa-txt strong{font-size:15px}
-  .pa-status .pa-txt span{font-size:13px;color:#5c574d;line-height:1.45}
-  .pa-status.pa-done{border-left:4px solid #2e7d4f}
-  .pa-status.pa-error{border-left:4px solid #b3261e}
-  .pa-status .pa-meta{font-family:"JetBrains Mono",monospace;font-size:11px;
-    letter-spacing:.04em;color:#928c7e}
-  .pa-bar{position:relative;height:4px;border-radius:4px;background:#ece5d6;
+  .pa-status .pa-txt strong{font-family:"Space Grotesk","IBM Plex Sans",sans-serif;font-size:16px;font-weight:700;letter-spacing:-.01em;color:#161b22}
+  .pa-status .pa-txt span{font-size:13px;color:#586172;line-height:1.45}
+  .pa-status.pa-done{border-left:4px solid #0e7a4f}
+  .pa-status.pa-done .pa-txt strong{color:#0e7a4f}
+  .pa-status.pa-error{border-left:4px solid #c12626}
+  .pa-status.pa-error .pa-txt strong{color:#c12626}
+  .pa-status .pa-meta{font-family:"IBM Plex Mono",monospace;font-size:11px;
+    letter-spacing:.04em;color:#8a93a3}
+  .pa-bar{position:relative;height:4px;border-radius:4px;background:#e6eaf0;
     overflow:hidden;margin-top:14px}
   .pa-bar > span{position:absolute;top:0;left:0;height:100%;width:40%;border-radius:4px;
-    background:#211f1b;animation:pa-slide 1.25s ease-in-out infinite}
+    background:#161b22;animation:pa-slide 1.25s ease-in-out infinite}
   @keyframes pa-spin{to{transform:rotate(360deg)}}
   @keyframes pa-slide{0%{left:-40%}50%{left:60%}100%{left:110%}}
+  @media(prefers-reduced-motion:reduce){.pa-status .pa-spinner{animation:none}.pa-bar > span{animation:none;width:100%;opacity:.4}}
 </style>
 """
 
@@ -108,17 +113,67 @@ def load_example(example: dict):
     return example["platform"], example["goal"], example["audience"], example["post"]
 
 
-with gr.Blocks(title="Post Audit", theme=gr.themes.Soft()) as demo:
-    gr.Markdown(
-        """
-# Post Audit
-Audit a social post against your **goal** and **audience** before you publish.
+# Page identity matches the report (render.py): cool slate instrument panel,
+# Space Grotesk display, IBM Plex Sans body, IBM Plex Mono labels/codes.
+_THEME = gr.themes.Base(
+    primary_hue=gr.themes.colors.slate,
+    neutral_hue=gr.themes.colors.slate,
+    font=[gr.themes.GoogleFont("IBM Plex Sans"), "system-ui", "sans-serif"],
+    font_mono=[gr.themes.GoogleFont("IBM Plex Mono"), "ui-monospace", "monospace"],
+).set(
+    body_background_fill="#eef1f5",
+    body_text_color="#161b22",
+    block_background_fill="#ffffff",
+    block_border_color="#e3e7ee",
+    block_label_text_color="#586172",
+    block_title_text_color="#161b22",
+    input_background_fill="#ffffff",
+    input_border_color="#cfd6e0",
+    input_border_color_focus="#161b22",
+    button_large_radius="10px",
+    button_primary_background_fill="#161b22",
+    button_primary_background_fill_hover="#2a313c",
+    button_primary_text_color="#ffffff",
+    button_primary_border_color="#161b22",
+    button_secondary_background_fill="#ffffff",
+    button_secondary_background_fill_hover="#f1f4f8",
+    button_secondary_border_color="#cfd6e0",
+    button_secondary_text_color="#161b22",
+)
 
-Hybrid pipeline: deterministic rule linters + **Gemma 4 E4B** (4.5B effective) on Modal.
-The first run after the app has been idle can take up to ~2 minutes while the GPU container
-loads the model; later runs are much faster.
+_PAGE_CSS = """
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap');
+.gradio-container{background:#eef1f5}
+.pa-head{padding:6px 2px 4px}
+.pa-head .eyebrow{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.24em;
+  text-transform:uppercase;color:#8a93a3}
+.pa-head h1{font-family:"Space Grotesk","IBM Plex Sans",sans-serif;font-weight:700;font-size:30px;
+  letter-spacing:-.015em;color:#161b22;margin:7px 0 0}
+.pa-head .sub{font-family:"IBM Plex Sans",sans-serif;font-size:15px;color:#586172;line-height:1.5;margin:9px 0 0;max-width:62ch}
+.pa-head .note{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:#8a93a3;margin:9px 0 0}
+.pa-head .rule{height:1.5px;background:#161b22;margin:16px 0 2px}
+/* component labels as quiet mono captions, echoing the report's section heads */
+.gradio-container .block .label-wrap > span,
+.gradio-container label[data-testid] > span:first-child,
+.gradio-container span[data-testid="block-info"]{font-family:"IBM Plex Mono",monospace;
+  font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#586172}
+.gradio-container .primary{font-weight:500}
 """
-    )
+
+_HEADER_HTML = """
+<div class="pa-head">
+  <div class="eyebrow">pre-publish readiness check</div>
+  <h1>Post Audit</h1>
+  <p class="sub">Check a draft against your stated goal and audience before you publish —
+  deterministic rule linters plus Gemma 4 E4B on Modal.</p>
+  <p class="note">First run after idle can take up to ~2 min while the GPU loads the model; later runs are faster.</p>
+  <div class="rule"></div>
+</div>
+"""
+
+
+with gr.Blocks(title="Post Audit", theme=_THEME, css=_PAGE_CSS) as demo:
+    gr.HTML(_HEADER_HTML)
 
     with gr.Row():
         platform = gr.Dropdown(
