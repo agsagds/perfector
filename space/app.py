@@ -117,20 +117,41 @@ def load_example(example: dict):
 # `document.body.classList.add("dark")`); toggling it flips every theme CSS var to
 # its `_dark` variant. The report/status cards pin their own light colors
 # (color-scheme:light) on purpose, so they stay legible either way.
+#
+# Standalone-only by design: this matches Gradio's *standalone* mode (a hosted HF
+# Space — our deploy target). If this app is ever embedded as a <gradio-app> on
+# another site, Gradio puts `dark` on the host's parentElement and renders into a
+# shadow root, so both `document.body` and `getElementById` below would miss and
+# the toggle would silently no-op.
+#
+# We persist the choice to localStorage so a manual toggle survives a reload;
+# `_THEME_INIT_JS` re-applies it on load (otherwise refresh resets to the system
+# preference / ?__theme). The imperative `textContent` write is safe only because
+# `theme_btn` is never wired as an event *output* — Svelte never re-renders the
+# button, so it won't clobber our label. Don't add it as an output without moving
+# the labeling into the handler's return value.
 _THEME_TOGGLE_JS = """
 () => {
   const dark = document.body.classList.toggle('dark');
+  try { localStorage.setItem('pa-theme', dark ? 'dark' : 'light'); } catch (e) {}
   const b = document.getElementById('pa-theme-toggle');
   if (b) b.textContent = dark ? '☀ Light mode' : '☾ Dark mode';
 }
 """
 
-# Label the button for the *current* state on load — the app may already be dark
-# (system preference or ?__theme=dark) before the user ever clicks.
+# Re-apply the saved choice and label the button for the *current* state on load.
+# Without the saved choice the app falls back to whatever Gradio picked (system
+# preference or ?__theme=dark) before the user ever clicks.
 _THEME_INIT_JS = """
 () => {
+  let dark = document.body.classList.contains('dark');
+  try {
+    const saved = localStorage.getItem('pa-theme');
+    if (saved === 'dark' && !dark) { document.body.classList.add('dark'); dark = true; }
+    else if (saved === 'light' && dark) { document.body.classList.remove('dark'); dark = false; }
+  } catch (e) {}
   const b = document.getElementById('pa-theme-toggle');
-  if (b) b.textContent = document.body.classList.contains('dark') ? '☀ Light mode' : '☾ Dark mode';
+  if (b) b.textContent = dark ? '☀ Light mode' : '☾ Dark mode';
 }
 """
 

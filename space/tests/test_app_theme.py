@@ -58,6 +58,31 @@ class AppThemeTests(unittest.TestCase):
             "served config is missing _PAGE_CSS (the uppercase mono label rules)",
         )
 
+    def test_theme_toggle_js_handlers_are_wired(self):
+        """The toggle's click + the load-time label sync must reach the config.
+
+        Both are JS-only handlers (fn=None, js=...). If either is dropped, the
+        theme button stops working or its label desyncs — a silent regression a
+        unit test won't otherwise catch. Mirrors the theme-wiring guard above.
+        """
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            app.demo.launch(prevent_thread_lock=True, server_port=_free_port(), quiet=True)
+        try:
+            cfg = app.demo.get_config_file()
+        finally:
+            app.demo.close()
+
+        js_blobs = [d.get("js") or "" for d in cfg.get("dependencies", [])]
+        self.assertTrue(
+            any("classList.toggle('dark')" in js for js in js_blobs),
+            "served config is missing the theme-toggle click handler",
+        )
+        self.assertTrue(
+            any("localStorage.getItem('pa-theme')" in js for js in js_blobs),
+            "served config is missing the load-time theme-init handler",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
