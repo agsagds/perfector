@@ -1,10 +1,23 @@
-"""Modal inference service — Gemma 4 E4B post audit."""
+"""Modal inference service — Gemma 4 E4B post audit, served via Ollama.
+
+Production runner uses Ollama (llama.cpp / quantized GGUF) rather than
+transformers: transformers in fp/bf16 is a research/experiment runner, far too
+slow and memory-hungry for serving. llama.cpp runs the same gemma4:e4b weights
+quantized, which is what the local dev path already uses — so dev and prod share
+one stack and one model. The pulled model is cached in a Modal Volume so cold
+starts don't re-download the weights.
+"""
 
 from __future__ import annotations
 
+import hmac
 import json
 import os
+import subprocess
 import sys
+import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -19,23 +32,30 @@ except ModuleNotFoundError:  # deploy-time stub so the module imports locally
 
     HTTPException = Exception
 
-# Allow importing prompts from sibling space/ directory
+# Allow importing prompts/merge from the sibling space/ directory.
 SPACE_DIR = Path(__file__).resolve().parents[1] / "space"
 
-MODEL_ID = "google/gemma-4-E4B-it"
+MODEL = "gemma4:e4b"  # same target model as local dev; quantized GGUF via Ollama
 GPU = "L4"
+OLLAMA_URL = "http://127.0.0.1:11434"
+
+def _bake_model() -> str:
+    # Pull the GGUF at image-build time so it's baked into the layer — cold
+    # starts then just load it from local disk instead of downloading ~10 GB
+    # under the endpoint's response window.
+    return (
+        "bash -c 'ollama serve & "
+        "for i in $(seq 1 30); do curl -sf http://127.0.0.1:11434/api/tags >/dev/null && break; sleep 1; done; "
+        f"ollama pull {MODEL}'"
+    )
+
 
 image = (
     modal.Image.debian_slim(python_version="3.11")
-    .pip_install(
-        "torch>=2.4.0",
-        # gemma4 support; the model's config.json is written by transformers 5.5.0.dev0
-        "transformers>=5.5.0",
-        "accelerate>=1.0.0",
-        "huggingface_hub>=0.27.0",
-        "sentencepiece>=0.2.0",
-        "fastapi[standard]>=0.115.0",
-    )
+    .apt_install("curl", "zstd")  # zstd: required by the Ollama install script
+    .run_commands("curl -fsSL https://ollama.com/install.sh | sh")
+    .run_commands(_bake_model())
+    .pip_install("fastapi[standard]>=0.115.0")
     .add_local_dir(str(SPACE_DIR), remote_path="/root/space")
 )
 
@@ -49,67 +69,66 @@ app = modal.App("post-audit-inference", image=image)
 )
 class AuditModel:
     @modal.enter()
-    def load(self):
-        from transformers import AutoModelForCausalLM, AutoProcessor
-
+    def start(self):
         sys.path.insert(0, "/root/space")
-        # Loading per the official gemma-4-E4B-it model card (AutoProcessor + AutoModelForCausalLM)
-        self.processor = AutoProcessor.from_pretrained(MODEL_ID)
-        self.model = AutoModelForCausalLM.from_pretrained(
-            MODEL_ID,
-            dtype="auto",
-            device_map="auto",
+        # Start the Ollama server (uses the GPU automatically when present).
+        # The model is already baked into the image; KEEP_ALIVE=-1 keeps it
+        # resident between requests so we pay the GPU load once, not per call.
+        self._server = subprocess.Popen(
+            ["ollama", "serve"],
+            env={**os.environ, "OLLAMA_HOST": "127.0.0.1:11434", "OLLAMA_KEEP_ALIVE": "-1"},
         )
-        self.model.eval()
+        for _ in range(120):  # serve is usually ready in a few seconds
+            try:
+                urllib.request.urlopen(f"{OLLAMA_URL}/api/tags", timeout=3)
+                break
+            except Exception:  # noqa: BLE001 — connection refused / socket timeout while booting
+                time.sleep(1)
+        else:
+            raise RuntimeError("Ollama server did not become ready in time")
+        # Warm the model into the GPU now so the first real request is fast.
+        subprocess.run(["ollama", "run", MODEL, "ok"], check=False, timeout=240)
+        # Fail fast on silent CPU fallback: if Ollama's GPU libs don't line up
+        # with Modal's driver it would run on CPU while still billing the L4.
+        # `ollama ps` reports the processor the model actually loaded on.
+        ps = subprocess.run(["ollama", "ps"], capture_output=True, text=True)
+        print(f"[startup] ollama ps:\n{ps.stdout}", flush=True)
+        if "GPU" not in ps.stdout:
+            raise RuntimeError(f"Ollama is not using the GPU (ollama ps):\n{ps.stdout}")
 
-    def _generate(self, messages: list[dict[str, str]], retry_suffix: str | None = None) -> str:
-        import torch
-
-        if retry_suffix:
-            messages = messages + [{"role": "user", "content": retry_suffix}]
-
-        prompt = self.processor.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True,
-            enable_thinking=False,  # we need raw JSON, not reasoning traces
+    def _chat(self, messages: list[dict[str, str]]) -> str:
+        body = json.dumps(
+            {
+                "model": MODEL,
+                "messages": messages,
+                "stream": False,
+                "format": "json",  # constrain output to valid JSON
+                "options": {"temperature": 0, "num_predict": 2048},
+            }
+        ).encode("utf-8")
+        req = urllib.request.Request(
+            f"{OLLAMA_URL}/api/chat",
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
         )
-        prompt += "{"
-
-        inputs = self.processor(text=prompt, return_tensors="pt").to(self.model.device)
-        with torch.no_grad():
-            out = self.model.generate(
-                **inputs,
-                max_new_tokens=2048,
-                do_sample=False,
-                temperature=None,
-                top_p=None,
-            )
-        text = self.processor.decode(out[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True)
-        return "{" + text.strip()
+        with urllib.request.urlopen(req, timeout=300) as resp:
+            return json.loads(resp.read().decode("utf-8")).get("message", {}).get("content", "")
 
     @modal.method()
-    def audit(
-        self,
-        platform: str,
-        goal: str,
-        audience: str,
-        post: str,
-    ) -> dict[str, Any]:
+    def audit(self, platform: str, goal: str, audience: str, post: str) -> dict[str, Any]:
         sys.path.insert(0, "/root/space")
         from merge import parse_llm_json
         from prompts import build_messages
 
         messages = build_messages(platform, goal, audience, post)
-        raw = self._generate(messages)
         try:
-            return parse_llm_json(raw)
+            return parse_llm_json(self._chat(messages))
         except (json.JSONDecodeError, ValueError):
-            raw = self._generate(
-                messages,
-                retry_suffix="Return ONLY valid JSON matching the schema. No other text.",
-            )
-            return parse_llm_json(raw)
+            retry = messages + [
+                {"role": "user", "content": "Return ONLY valid JSON matching the schema. No other text."}
+            ]
+            return parse_llm_json(self._chat(retry))
 
 
 # Optional shared secret: export AUDIT_TOKEN before `modal deploy` to require
@@ -118,7 +137,7 @@ class AuditModel:
 @modal.fastapi_endpoint(method="POST")
 def audit_endpoint(body: dict[str, Any], x_audit_token: str | None = Header(default=None)):
     expected = os.environ.get("AUDIT_TOKEN", "")
-    if expected and x_audit_token != expected:
+    if expected and not hmac.compare_digest(x_audit_token or "", expected):
         raise HTTPException(status_code=401, detail="Invalid or missing X-Audit-Token header")
     platform = body.get("platform", "other")
     goal = body.get("goal", "")

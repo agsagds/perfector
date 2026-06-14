@@ -13,7 +13,7 @@ Community managers and team leads write posts with a goal in mind, but drafts of
 ```
 Gradio Space (HF)          Modal (L4 GPU)
      │                           │
-     ├─ rules.py (sync)          └─ Gemma 4 E4B IT
+     ├─ rules.py (sync)          └─ Ollama · gemma4:e4b (GGUF)
      ├─ merge.py (scores)
      └─ render.py (report UI)
 ```
@@ -22,7 +22,9 @@ Gradio Space (HF)          Modal (L4 GPU)
 - **LLM audit** on Modal: goal alignment judgment, tone, CTA clarity, rewrite hints
 - **Host recomputes** `overall` and `cappedBy` — never trusts model arithmetic
 
-Model: `google/gemma-4-E4B-it` — **4.5B effective**, Tiny Titan eligible, ≤32B hackathon limit.
+Model: `gemma4:e4b` (`google/gemma-4-E4B-it`, **4.5B effective**, ≤32B hackathon
+limit), served quantized via Ollama / llama.cpp — the same model and runner in
+local dev and prod.
 
 ## Repository layout
 
@@ -54,6 +56,30 @@ make dev      # Gradio app with hot reload at http://localhost:7860
 `make help` lists every task. Without `MODAL_AUDIT_URL`, the app uses a **mock
 LLM** (few-shot-shaped responses) so the UI, rules, and rendering are fully
 testable offline.
+
+### Iterating against a local LLM (Ollama)
+
+Run the **same model as production** on your machine — no Modal credits — to
+exercise the full prompt → JSON → merge pipeline. Uses [Ollama](https://ollama.com),
+which serves the quantized GGUF via llama.cpp; prod runs the identical stack and
+model on Modal, so local and prod behave the same.
+
+```bash
+make pull-model      # downloads gemma4:e4b (~9.6 GB) — the production model
+make dev-local       # launches the app wired to the local model
+```
+
+The backend is selected by `OLLAMA_MODEL` (default `gemma4:e4b`): when set (and
+`MODAL_AUDIT_URL` is not), [audit_client.py](space/audit_client.py) builds the
+same messages as the Modal service and POSTs them to Ollama's `/api/chat` with
+JSON-constrained output. `OLLAMA_URL` (default `http://localhost:11434`) points
+at a remote Ollama host; `OLLAMA_TIMEOUT` (default 300s) bounds a call.
+Precedence is **Modal → Ollama → mock**.
+
+`gemma4:e4b` needs roughly 8–10 GB free (RAM, or VRAM on a GPU box). On a tight
+machine you can override to a lighter model to test plumbing only — output
+quality won't match prod: `make dev-local OLLAMA_MODEL=gemma3:4b`. Inference
+speed depends on hardware (e.g. ~2–3 min/audit on an M1 CPU; seconds on a GPU).
 
 ### Iterating against the live model
 
@@ -95,7 +121,7 @@ Copy the deployed web URL. Create a Modal secret `huggingface` with `HF_TOKEN` i
 
 ## Social post template
 
-> Built for #buildSmallHackathon: **Post Audit** — audit your social post against goal & audience before you publish. Hybrid rule linters + Gemma 4 E4B on @Modal. Try it: [SPACE_URL]
+> Built for #buildSmallHackathon: **Post Audit** — audit your social post against goal & audience before you publish. Hybrid rule linters + Gemma 4 E4B on @Modal. Try it: https://huggingface.co/spaces/build-small-hackathon/post-audit
 
 ## Hackathon checklist
 

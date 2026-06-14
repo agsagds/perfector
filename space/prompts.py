@@ -12,9 +12,10 @@ INPUT (in the user message): platform, goal, audience, post.
 STEP 0 — brief check (briefCheck).
 - Goal is verifiable if there is an observable outcome and direction (not vague "engagement" but a concrete action or result).
 - Audience is verifiable if role/level/context is clear (not "everyone" or "professionals").
-- Always output inferred.goal and inferred.audience from the post text — your interpretation even if the brief is fine.
+- Always output inferred.goal and inferred.audience from the POST TEXT — what the post itself actually targets. This may differ from the stated brief; if it does, that divergence is evidence for the audit (likely GOAL_ACTION_MISMATCH), not a reason to stop.
 - If a brief field is vague, add a gaps object: field ("goal"|"audience"), reason, candidates (2–4 concrete options).
-- status="ok" if audit is possible (including on inferred). status="needs_clarification" only if goal is completely unverifiable; then auditReport=null.
+- status="ok" whenever the audit is possible — INCLUDING when the post looks unrelated to the goal or aimed at a different audience. A post that fails to serve a clear, verifiable goal is a normal audit case: score it (expect low goalService/cta) and fire GOAL_ACTION_MISMATCH. Never defer such a case.
+- status="needs_clarification" ONLY when the GOAL TEXT itself is too vague to define success (e.g. "increase engagement", "grow the brand") and no concrete success criterion can be derived. A mismatch between post and goal is NEVER a clarification trigger. When in doubt, prefer "ok" and audit. When status="needs_clarification", auditReport=null.
 
 STEP 1 — goal dimensions (5 items, integer scores 1–5). Anchors:
 [hook]        1=first line repels/empty; 3=neutral, not compelling; 5=stakes/benefit/hook clear from line one.

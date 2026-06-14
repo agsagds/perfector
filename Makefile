@@ -1,8 +1,9 @@
 # Post Audit — local development tasks.
 # Requires `uv` (https://docs.astral.sh/uv/). Python version is pinned in .python-version.
 
-VENV := .venv
-PY   := $(VENV)/bin/python
+VENV        := .venv
+PY          := $(VENV)/bin/python
+OLLAMA_MODEL ?= gemma4:e4b
 
 .DEFAULT_GOAL := help
 
@@ -36,6 +37,14 @@ smoke: $(VENV) ## Run the offline smoke test (rules + mock LLM + render)
 .PHONY: dev
 dev: $(VENV) ## Launch the Gradio app with hot reload (mock LLM unless MODAL_AUDIT_URL is set)
 	cd space && ../$(VENV)/bin/gradio app.py
+
+.PHONY: pull-model
+pull-model: ## Download the local Ollama model (default gemma4:e4b — same as prod)
+	ollama pull $(OLLAMA_MODEL)
+
+.PHONY: dev-local
+dev-local: $(VENV) ## Launch the app wired to a local Ollama model (override OLLAMA_MODEL=...)
+	cd space && OLLAMA_MODEL=$(OLLAMA_MODEL) ../$(VENV)/bin/gradio app.py
 
 .PHONY: serve-modal
 serve-modal: $(VENV) ## Hot-reloading ephemeral Modal endpoint for live Gemma 4 (needs `modal setup`)

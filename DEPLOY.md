@@ -13,20 +13,23 @@ Run these on a machine with `pip`, `modal`, and `hf` CLI authenticated.
 ```bash
 pip install modal
 modal setup
-./scripts/deploy_modal.sh
+# Deploy. Set AUDIT_TOKEN to require an X-Audit-Token header (recommended for
+# anything public — the check runs in the CPU web function before the GPU spins
+# up, so unauthorized calls don't burn credits). Leave it unset for an open endpoint.
+AUDIT_TOKEN=$(python3 -c 'import secrets;print(secrets.token_urlsafe(32))') \
+  ./scripts/deploy_modal.sh
 ```
 
-Copy the `audit_endpoint` URL from deploy output.
+Copy the printed `audit_endpoint` URL. The first request pulls the quantized
+`gemma4:e4b` GGUF into a Modal Volume (~6 GB, cached thereafter), so the very
+first cold start is slow; later ones reuse the cached weights.
 
-Optional: create Modal secret `huggingface` with `HF_TOKEN` if model download requires it:
-
-```bash
-modal secret create huggingface HF_TOKEN=hf_...
-```
-
-Then add `secrets=[modal.Secret.from_name("huggingface")]` to `@app.cls` in `modal_app/inference.py`.
-
-Optional: protect the endpoint with a shared secret — export `AUDIT_TOKEN=<random string>` before running `./scripts/deploy_modal.sh`. When set, every request must carry a matching `X-Audit-Token` header (the Space sends it automatically when its `MODAL_AUDIT_TOKEN` secret is set to the same value).
+There's **one deployment** — the same artifact serves everyone. To run a
+throwaway dev endpoint, use `make serve-modal` (ephemeral, hot-reload); to
+separate staging from prod, deploy with a different `AUDIT_TOKEN` (and, if you
+want a distinct URL, pass an environment: `./scripts/deploy_modal.sh prod` after
+`modal environment create prod`). A separate environment is optional, not
+required — tokens are the access control.
 
 ## 3. Hugging Face Space
 
@@ -54,8 +57,13 @@ In Space **Settings → Repository secrets**:
 
 ```bash
 export MODAL_AUDIT_URL=https://YOUR-WORKSPACE--post-audit-inference-audit-endpoint.modal.run
+export MODAL_AUDIT_TOKEN=...   # if the endpoint is token-protected
 python3 scripts/smoke_remote.py
 ```
+
+The first request on a fresh deploy cold-starts the container and pulls the
+quantized GGUF (~6 GB) into the Volume; once cached, cold starts just load it.
+The client timeout defaults to 300s and is configurable via `MODAL_AUDIT_TIMEOUT`.
 
 ## 5. Submission
 

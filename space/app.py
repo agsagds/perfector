@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import gradio as gr
 
-from audit_client import call_modal_audit, get_modal_url
+from audit_client import backend_label, call_modal_audit
 from examples import EXAMPLE_CHAT_DUMP, EXAMPLE_WEBINAR
 from merge import merge_audit, viewer_payload
 from render import render_report_html
@@ -26,8 +26,10 @@ def run_audit(platform: str, goal: str, audience: str, post: str):
     view = viewer_payload(merged)
     report_html = render_report_html(view)
 
-    mode = "live Gemma 4 E4B on Modal" if get_modal_url() else "mock LLM (set MODAL_AUDIT_URL)"
-    status = f"<p><strong>Done.</strong> Inference: {mode}. Rule warnings: {len(rule_warnings)}.</p>"
+    status = (
+        f"<p><strong>Done.</strong> Inference: {backend_label()}. "
+        f"Rule warnings: {len(rule_warnings)}.</p>"
+    )
 
     return status + report_html, merged
 
