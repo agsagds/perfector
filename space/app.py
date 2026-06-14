@@ -172,7 +172,10 @@ _HEADER_HTML = """
 """
 
 
-with gr.Blocks(title="Post Audit", theme=_THEME, css=_PAGE_CSS) as demo:
+# Gradio 6 moved `theme`/`css` from the Blocks constructor to `.launch()` (passing
+# them to the constructor warns and is dropped from the served config). They are
+# applied in the launch() call below.
+with gr.Blocks(title="Post Audit") as demo:
     gr.HTML(_HEADER_HTML)
 
     with gr.Row():
@@ -218,4 +221,4 @@ with gr.Blocks(title="Post Audit", theme=_THEME, css=_PAGE_CSS) as demo:
     )
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(theme=_THEME, css=_PAGE_CSS)
