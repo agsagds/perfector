@@ -34,12 +34,9 @@ test: $(VENV) ## Run unit tests
 smoke: $(VENV) ## Run the offline smoke test (rules + mock LLM + render)
 	./scripts/smoke_local.sh
 
-# Run via `python app.py` (not the `gradio` CLI): theme/css are applied in the
-# app's own .launch() call, which the CLI's reload runner bypasses — so the CLI
-# would serve the app without its theme. This matches how HF Spaces runs it.
 .PHONY: dev
-dev: $(VENV) ## Launch the Gradio app (mock LLM unless MODAL_AUDIT_URL is set)
-	cd space && ../$(PY) app.py
+dev: $(VENV) ## Launch the Gradio app with hot reload (mock LLM unless MODAL_AUDIT_URL is set)
+	cd space && ../$(VENV)/bin/gradio app.py
 
 .PHONY: pull-model
 pull-model: ## Download the local Ollama model (default gemma4:e4b — same as prod)
@@ -47,7 +44,7 @@ pull-model: ## Download the local Ollama model (default gemma4:e4b — same as p
 
 .PHONY: dev-local
 dev-local: $(VENV) ## Launch the app wired to a local Ollama model (override OLLAMA_MODEL=...)
-	cd space && OLLAMA_MODEL=$(OLLAMA_MODEL) ../$(PY) app.py
+	cd space && OLLAMA_MODEL=$(OLLAMA_MODEL) ../$(VENV)/bin/gradio app.py
 
 .PHONY: serve-modal
 serve-modal: $(VENV) ## Hot-reloading ephemeral Modal endpoint for live Gemma 4 (needs `modal setup`)

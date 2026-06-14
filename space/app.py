@@ -172,10 +172,15 @@ _HEADER_HTML = """
 """
 
 
-# Gradio 6 moved `theme`/`css` from the Blocks constructor to `.launch()` (passing
-# them to the constructor warns and is dropped from the served config). They are
-# applied in the launch() call below.
-with gr.Blocks(title="Post Audit") as demo:
+# theme/css are set in BOTH places on purpose (Gradio 6). Whichever code path
+# serves the app, the theme survives:
+#   - run as __main__ (`python app.py`, HF Spaces): the explicit launch() args win.
+#   - imported & launched by another runner with no args (the `gradio` CLI reload
+#     runner, and possibly HF's launcher): the constructor args are re-applied at
+#     launch() time via Gradio's `_deprecated_theme`/`_deprecated_css` shim.
+# The constructor form emits a (benign) deprecation warning; that is the price of
+# covering the import-and-launch path. See tests/test_app_theme.py.
+with gr.Blocks(title="Post Audit", theme=_THEME, css=_PAGE_CSS) as demo:
     gr.HTML(_HEADER_HTML)
 
     with gr.Row():
