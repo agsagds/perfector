@@ -23,7 +23,7 @@ def get_modal_timeout() -> float:
 
 
 def get_ollama_model() -> str | None:
-    """Local Ollama model tag (e.g. 'gemma3:4b'); enables the local-LLM path."""
+    """Local Ollama model tag (e.g. 'gemma4:e4b'); enables the local-LLM path."""
     return os.environ.get("OLLAMA_MODEL")
 
 

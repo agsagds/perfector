@@ -10,6 +10,7 @@ starts don't re-download the weights.
 
 from __future__ import annotations
 
+import hmac
 import json
 import os
 import subprocess
@@ -87,6 +88,13 @@ class AuditModel:
             raise RuntimeError("Ollama server did not become ready in time")
         # Warm the model into the GPU now so the first real request is fast.
         subprocess.run(["ollama", "run", MODEL, "ok"], check=False, timeout=240)
+        # Fail fast on silent CPU fallback: if Ollama's GPU libs don't line up
+        # with Modal's driver it would run on CPU while still billing the L4.
+        # `ollama ps` reports the processor the model actually loaded on.
+        ps = subprocess.run(["ollama", "ps"], capture_output=True, text=True)
+        print(f"[startup] ollama ps:\n{ps.stdout}", flush=True)
+        if "GPU" not in ps.stdout:
+            raise RuntimeError(f"Ollama is not using the GPU (ollama ps):\n{ps.stdout}")
 
     def _chat(self, messages: list[dict[str, str]]) -> str:
         body = json.dumps(
@@ -129,7 +137,7 @@ class AuditModel:
 @modal.fastapi_endpoint(method="POST")
 def audit_endpoint(body: dict[str, Any], x_audit_token: str | None = Header(default=None)):
     expected = os.environ.get("AUDIT_TOKEN", "")
-    if expected and x_audit_token != expected:
+    if expected and not hmac.compare_digest(x_audit_token or "", expected):
         raise HTTPException(status_code=401, detail="Invalid or missing X-Audit-Token header")
     platform = body.get("platform", "other")
     goal = body.get("goal", "")
