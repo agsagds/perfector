@@ -17,8 +17,8 @@ def get_modal_url() -> str | None:
 
 
 def get_modal_timeout() -> float:
-    # Warm latency is ~50s, but a cold container must download + load the ~16 GB
-    # model first, which pushes the first request past 2 min. Generous default.
+    # A cold Modal container loads the quantized model (and on a fresh deploy
+    # pulls the GGUF), which can push the first request past a minute. Generous default.
     return float(os.environ.get("MODAL_AUDIT_TIMEOUT", "300"))
 
 

@@ -3,7 +3,7 @@
 
 VENV        := .venv
 PY          := $(VENV)/bin/python
-OLLAMA_MODEL ?= gemma3:4b
+OLLAMA_MODEL ?= gemma4:e4b
 
 .DEFAULT_GOAL := help
 
@@ -39,7 +39,7 @@ dev: $(VENV) ## Launch the Gradio app with hot reload (mock LLM unless MODAL_AUD
 	cd space && ../$(VENV)/bin/gradio app.py
 
 .PHONY: pull-model
-pull-model: ## Download the local Ollama dev model (override: make pull-model OLLAMA_MODEL=gemma4:e4b)
+pull-model: ## Download the local Ollama model (default gemma4:e4b — same as prod)
 	ollama pull $(OLLAMA_MODEL)
 
 .PHONY: dev-local

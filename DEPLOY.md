@@ -13,37 +13,23 @@ Run these on a machine with `pip`, `modal`, and `hf` CLI authenticated.
 ```bash
 pip install modal
 modal setup
-```
-
-### Environments (dev / prod split)
-
-Deploys are scoped to a Modal **environment**. Keep prod isolated from dev/staging:
-
-```bash
-modal environment create prod          # once
-# prod: token-protected, its own endpoint URL
+# Deploy. Set AUDIT_TOKEN to require an X-Audit-Token header (recommended for
+# anything public — the check runs in the CPU web function before the GPU spins
+# up, so unauthorized calls don't burn credits). Leave it unset for an open endpoint.
 AUDIT_TOKEN=$(python3 -c 'import secrets;print(secrets.token_urlsafe(32))') \
-  ./scripts/deploy_modal.sh prod
-# dev/staging in the default 'main' env (also protect it):
-AUDIT_TOKEN=$(python3 -c 'import secrets;print(secrets.token_urlsafe(32))') \
-  ./scripts/deploy_modal.sh main
+  ./scripts/deploy_modal.sh
 ```
 
-Each environment gets a distinct `audit_endpoint` URL — copy the one for the
-environment you're wiring to the Space. **Use a different `AUDIT_TOKEN` per
-environment** so a leaked dev token can't reach prod. For local iteration, prefer
-`make serve-modal` (ephemeral) or the Ollama path — don't point local dev at prod.
+Copy the printed `audit_endpoint` URL. The first request pulls the quantized
+`gemma4:e4b` GGUF into a Modal Volume (~6 GB, cached thereafter), so the very
+first cold start is slow; later ones reuse the cached weights.
 
-> The endpoint checks the token in the lightweight CPU web function **before**
-> invoking the GPU, so unauthorized requests are rejected without burning credits.
-
-Optional: create Modal secret `huggingface` with `HF_TOKEN` if model download requires it:
-
-```bash
-modal secret create huggingface HF_TOKEN=hf_...
-```
-
-Then add `secrets=[modal.Secret.from_name("huggingface")]` to `@app.cls` in `modal_app/inference.py`.
+There's **one deployment** — the same artifact serves everyone. To run a
+throwaway dev endpoint, use `make serve-modal` (ephemeral, hot-reload); to
+separate staging from prod, deploy with a different `AUDIT_TOKEN` (and, if you
+want a distinct URL, pass an environment: `./scripts/deploy_modal.sh prod` after
+`modal environment create prod`). A separate environment is optional, not
+required — tokens are the access control.
 
 ## 3. Hugging Face Space
 
@@ -75,9 +61,9 @@ export MODAL_AUDIT_TOKEN=...   # if the endpoint is token-protected
 python3 scripts/smoke_remote.py
 ```
 
-The first request cold-starts the container (downloads + loads the ~16 GB model,
-~2 min); warm latency is ~50s. The client timeout defaults to 300s and is
-configurable via `MODAL_AUDIT_TIMEOUT`.
+The first request on a fresh deploy cold-starts the container and pulls the
+quantized GGUF (~6 GB) into the Volume; once cached, cold starts just load it.
+The client timeout defaults to 300s and is configurable via `MODAL_AUDIT_TIMEOUT`.
 
 ## 5. Submission
 
