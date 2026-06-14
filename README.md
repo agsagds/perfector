@@ -131,6 +131,11 @@ Copy the deployed web URL. Create a Modal secret `huggingface` with `HF_TOKEN` i
 - [ ] Social post published
 - [ ] `MODAL_AUDIT_URL` secret set on Space
 
+## Authors
+
+- Eugene Pasternak — [`pasternake`](https://huggingface.co/pasternake)
+- Pavel Trubin — [`agsagds`](https://huggingface.co/agsagds)
+
 ## License
 
 Apache 2.0 — see [LICENSE](LICENSE).

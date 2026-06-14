@@ -113,6 +113,28 @@ def load_example(example: dict):
     return example["platform"], example["goal"], example["audience"], example["post"]
 
 
+# Dark mode in Gradio is just a `dark` class on <body> (the served bundle does
+# `document.body.classList.add("dark")`); toggling it flips every theme CSS var to
+# its `_dark` variant. The report/status cards pin their own light colors
+# (color-scheme:light) on purpose, so they stay legible either way.
+_THEME_TOGGLE_JS = """
+() => {
+  const dark = document.body.classList.toggle('dark');
+  const b = document.getElementById('pa-theme-toggle');
+  if (b) b.textContent = dark ? '☀ Light mode' : '☾ Dark mode';
+}
+"""
+
+# Label the button for the *current* state on load — the app may already be dark
+# (system preference or ?__theme=dark) before the user ever clicks.
+_THEME_INIT_JS = """
+() => {
+  const b = document.getElementById('pa-theme-toggle');
+  if (b) b.textContent = document.body.classList.contains('dark') ? '☀ Light mode' : '☾ Dark mode';
+}
+"""
+
+
 # Page identity matches the report (render.py): cool slate instrument panel,
 # Space Grotesk display, IBM Plex Sans body, IBM Plex Mono labels/codes.
 _THEME = gr.themes.Base(
@@ -204,6 +226,7 @@ with gr.Blocks(title="Post Audit", theme=_THEME, css=_PAGE_CSS) as demo:
         audit_btn = gr.Button("Run audit", variant="primary")
         ex_webinar = gr.Button("Load example: weak webinar CTA")
         ex_chat = gr.Button("Load example: chat dump")
+        theme_btn = gr.Button("☾ Dark mode", elem_id="pa-theme-toggle", scale=0)
 
     status_report = gr.HTML()
 
@@ -224,6 +247,9 @@ with gr.Blocks(title="Post Audit", theme=_THEME, css=_PAGE_CSS) as demo:
         fn=lambda: load_example(EXAMPLE_CHAT_DUMP),
         outputs=[platform, goal, audience, post],
     )
+    theme_btn.click(fn=None, inputs=None, outputs=None, js=_THEME_TOGGLE_JS)
+
+    demo.load(fn=None, inputs=None, outputs=None, js=_THEME_INIT_JS)
 
 if __name__ == "__main__":
     demo.launch(theme=_THEME, css=_PAGE_CSS)
