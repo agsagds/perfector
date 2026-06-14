@@ -224,7 +224,7 @@ REPORT_CSS = """
     --info:#1f5fae; --info-bg:#e9f0fb; --info-line:#cbdcf3;
     --sans:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
     --display:"Space Grotesk",var(--sans); --mono:"IBM Plex Mono",ui-monospace,monospace;
-    background:var(--bg); color:var(--ink); font-family:var(--sans);
+    background:var(--bg); color:var(--ink); font-family:var(--sans); color-scheme:light;
     font-size:16px; line-height:1.6; border:1px solid var(--line2);
     border-radius:16px; padding:6px; -webkit-font-smoothing:antialiased;
   }
@@ -285,7 +285,7 @@ REPORT_CSS = """
   .post-audit-report .dim{display:grid;grid-template-columns:142px 1fr;gap:10px 18px;align-items:start;
     padding:13px 0;border-bottom:1px solid var(--line)}
   .post-audit-report .dim:last-child{border-bottom:none}
-  .post-audit-report .dim-name{font-weight:500;font-size:15px}
+  .post-audit-report .dim-name{font-weight:500;font-size:15px;color:var(--ink)}
   .post-audit-report .dim-k{display:block;font-size:10.5px;color:var(--faint);font-weight:400;margin-top:3px;letter-spacing:.02em}
   .post-audit-report .dim-bar{display:flex;align-items:center;gap:11px;margin-bottom:6px}
   .post-audit-report .dim-track{flex:1;height:6px;border-radius:4px;background:#e6eaf0;overflow:hidden}
@@ -315,7 +315,7 @@ REPORT_CSS = """
 
   .post-audit-report ol.fixes{list-style:none;counter-reset:f;margin:0;padding:0}
   .post-audit-report ol.fixes li{counter-increment:f;position:relative;padding:11px 0 11px 40px;
-    border-bottom:1px solid var(--line);font-size:15px;line-height:1.5}
+    border-bottom:1px solid var(--line);font-size:15px;line-height:1.5;color:var(--ink)}
   .post-audit-report ol.fixes li:last-child{border-bottom:none}
   .post-audit-report ol.fixes li::before{content:counter(f,decimal-leading-zero);position:absolute;left:0;top:12px;
     font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500}
@@ -323,12 +323,12 @@ REPORT_CSS = """
   .post-audit-report .cards2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .post-audit-report .infcard{background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
   .post-audit-report .infcard-t{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:7px}
-  .post-audit-report .infcard-v{font-size:15px;line-height:1.5}
+  .post-audit-report .infcard-v{font-size:15px;line-height:1.5;color:var(--ink)}
   .post-audit-report .gap{background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:14px 16px;margin-bottom:11px}
   .post-audit-report .fld{display:inline-block;font-size:11px;background:var(--warn-bg);color:var(--warn);padding:3px 9px;border-radius:5px;margin-bottom:9px}
   .post-audit-report .gap-reason{font-size:14.5px;color:var(--muted);margin-bottom:11px}
   .post-audit-report .chips{display:flex;flex-wrap:wrap;gap:7px}
-  .post-audit-report .chip{font-size:13px;border:1px solid var(--line2);border-radius:20px;padding:5px 13px;background:var(--surface)}
+  .post-audit-report .chip{font-size:13px;border:1px solid var(--line2);border-radius:20px;padding:5px 13px;background:var(--surface);color:var(--ink)}
 
   @media(max-width:620px){
     .post-audit-report .cards2{grid-template-columns:1fr}
